@@ -100,12 +100,23 @@ def emptyTreasaury(treasury_address, payout_token_address, payout_token_price):
     except Exception as e:
         print("emptyTreasaury error")
         print(e)
+        
+        
+def fetchInfoCustomAPI(url):
+    try:
+        r = requests.get(url=url)
+        data = r.json()
+        tokenPrice = float(data["assetPriceUSD"])
+        return(tokenPrice)
+
+    except Exception as e:
+        print(e)
 
 
 def get_prices():
     #retrieve prices from CoinGecko
     baseTokenPrice = cg.get_price(ids='ethereum', vs_currencies='usd')['ethereum']['usd']
-    payoutTokenPrice = cg.get_price(ids='thorswap', vs_currencies='usd')['thorswap']['usd']
+    payoutTokenPrice = fetchInfoCustomAPI("https://midgard.thorchain.info/v2/pool/ETH.THOR-0XA5F2211B9B8170F694421F2046281775E8468044")
 
     bondClosed = maxDebtReached(bond_address='0xee8911D69d5a49aeC8B17419D7C8Cb5A08b449Ba')
     bondEmpty = emptyTreasaury(treasury_address='0x68619d4C962D3EE76277b5bC685E161917EE7561', payout_token_address='0xa5f2211B9b8170F694421f2046281775E8468044', payout_token_price=payoutTokenPrice)
