@@ -22,6 +22,11 @@ web3 = Web3(Web3.HTTPProvider(infuraURL))
 # Price APIs
 cg = CoinGeckoAPI()
 
+# Global Variables
+channel_id = 927170332287176734
+alert_1, alert_2 = False, False
+bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address = 0, 0, 0, 0
+
 
 def contract_info(sushi_address, bond_address, baseTokenPrice, mainTokenPrice=0, payoutTokenPrice=0, maxReached=False, noFunds=False, uniContract=False):
     if maxReached == True or noFunds == True:
@@ -91,11 +96,11 @@ def emptyTreasaury(treasury_address, payout_token_address, payout_token_price):
     abi = json.loads('[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_owner","type":"address"},{"indexed":true,"internalType":"address","name":"_spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_from","type":"address"},{"indexed":true,"internalType":"address","name":"_to","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"DOMAIN_SEPARATOR","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"claimOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"nonces","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingOwner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner_","type":"address"},{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"permit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"},{"internalType":"bool","name":"direct","type":"bool"},{"internalType":"bool","name":"renounce","type":"bool"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
     token = web3.eth.contract(address=payout_token_address, abi=abi)
     try:
-        tokensLeft = token.functions.balanceOf(treasury_address).call()
-        if tokensLeft/1e18 * payout_token_price < 1000:
-            return(True)
+        tokensLeft = token.functions.balanceOf(treasury_address).call()/1e18
+        if tokensLeft * payout_token_price < 1000:
+            return(True, tokensLeft, tokensLeft * payout_token_price, treasury_address)
         else:
-            return(False)
+            return(False, tokensLeft, tokensLeft * payout_token_price, treasury_address) 
 
     except Exception as e:
         print("emptyTreasaury error")
@@ -114,15 +119,17 @@ def fetchInfoCustomAPI(url):
 
 
 def get_prices():
+    global bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address
+    
     #retrieve prices from CoinGecko
     baseTokenPrice = cg.get_price(ids='ethereum', vs_currencies='usd')['ethereum']['usd']
     mainTokenPrice = cg.get_price(ids='thorchain', vs_currencies='usd')['thorchain']['usd']
     payoutTokenPrice = fetchInfoCustomAPI("https://midgard.thorchain.info/v2/pool/ETH.THOR-0XA5F2211B9B8170F694421F2046281775E8468044")
 
     bondClosed = maxDebtReached(bond_address='0xf7092a510f154FfF7F90d18d3a053b08B7c7e417')
-    bondEmpty = emptyTreasaury(treasury_address='0x68619d4C962D3EE76277b5bC685E161917EE7561', payout_token_address='0xa5f2211B9b8170F694421f2046281775E8468044', payout_token_price=payoutTokenPrice)
+    bondEmpty, rewardsLeft, rewardsUSDLeft, treasury_address = emptyTreasaury(treasury_address='0x68619d4C962D3EE76277b5bC685E161917EE7561', payout_token_address='0xa5f2211B9b8170F694421f2046281775E8468044', payout_token_price=payoutTokenPrice)
     bondDisc = contract_info(sushi_address='0xcc39592f5cb193a70f262aa301f54db1d600e6da', bond_address='0xf7092a510f154FfF7F90d18d3a053b08B7c7e417', baseTokenPrice=baseTokenPrice, mainTokenPrice=mainTokenPrice, payoutTokenPrice=payoutTokenPrice, maxReached=bondClosed, noFunds=bondEmpty, uniContract=False)
-    return(bondDisc)
+    return(bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address)
 
 
 @client.event
@@ -132,9 +139,10 @@ async def on_ready():
         check_discounts.start()
 
 
-@tasks.loop(seconds = 60)
+@tasks.loop(seconds = 90)
 async def check_discounts():
-    bondDisc = get_prices()
+    global channel_id, alert_1, alert_2
+    bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address = get_prices()
     
     for guild in client.guilds:
         guser = guild.get_member(client.user.id)
@@ -152,6 +160,60 @@ async def check_discounts():
         except Exception as e:
             print("check_discounts error")
             print(e)
+
+    if rewardsUSDLeft <= 10000 and alert_1 is False:
+        alert_1 = True
+        embed = discord.Embed(title='⛔ Treasury Empty!', description=f'No rewards left in the treasury! Refill it before bond discounts grow too much. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xff5252)  # noqa: E501
+        embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} XXXX', inline=True)
+        #send alert: OlympusPro channel
+        try:
+            OP_channel = await client.fetch_channel('923302824220164186')
+            await OP_channel.send(embed=embed)
+        except Exception as e:
+            print(e)
+        #send alert: partner's channel
+        try:
+            partner_channel = await client.fetch_channel(channel_id)
+            await partner_channel.send(embed=embed)
+        except Exception as e:
+            print(e)
+
+    elif rewardsUSDLeft <= 50000 and alert_2 is False:
+        print(alert_2)
+        alert_1, alert_2 = False, True
+        embed = discord.Embed(title='Treasury Alert!', description=f'The treasury is running out of rewards. \n Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffbe4d)  # noqa: E501
+        embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} XXXX', inline=True)
+        #send alert: OlympusPro channel
+        try:
+            OP_channel = await client.fetch_channel('923302824220164186')
+            await OP_channel.send(embed=embed)
+        except Exception as e:
+            print(e)
+        #send alert: partner's channel
+        try:
+            partner_channel = await client.fetch_channel(channel_id)
+            await partner_channel.send(embed=embed)
+        except Exception as e:
+            print(e)
+    
+    elif rewardsUSDLeft > 10000000 and alert_2 is True:
+        alert_2 = False
+
+
+@client.slash_command(description="Check the current balances of the Olympus Pro custom Treasury.")
+async def treasury_balance(ctx):
+    global channel_id, bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address
+    
+    try:
+        embed = discord.Embed(title='Current Treasury Status', description=f'Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffffff)  # noqa: E501
+        embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} XXXX', inline=True)
+        await ctx.respond(embed=embed)
+
+    except Exception as e:
+        print(e)
 
 
 client.run(BOT_TOKEN)
