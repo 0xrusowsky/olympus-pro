@@ -1,13 +1,13 @@
 import os
 import json
-import requests
 import decimal
 from web3 import Web3
 import discord
 from discord.ext import commands, tasks
+from discord.app import Option
 from pycoingecko import CoinGeckoAPI
 
-BOT_TOKEN = os.environ["DISCORD_BOT_TOKEN_FDT_gOHM"]
+BOT_TOKEN = os.environ["DISCORD_BOT_PREMIA_ETH"]
 
 # Initialize Discord client
 intents = discord.Intents.all()
@@ -15,7 +15,7 @@ intents.members = True
 client = commands.Bot(intents=intents, help_command=None)
 
 # Initialize web3
-INFURA_TOKEN = os.environ['WEB3_INFURA_TOKEN_4']
+INFURA_TOKEN = os.environ['WEB3_INFURA_TOKEN_2']
 infuraURL = f'https://mainnet.infura.io/v3/{INFURA_TOKEN}'
 web3 = Web3(Web3.HTTPProvider(infuraURL))
 
@@ -23,12 +23,12 @@ web3 = Web3(Web3.HTTPProvider(infuraURL))
 cg = CoinGeckoAPI()
 
 # Global Variables
-channel_id = 928316893796892734
+channel_id = 896823513502081074
 alert_1, alert_2 = False, False
 bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address = 0, 0, 0, 0
 
 
-def lp_price(LP_address, base_token_address, baseTokenPrice, mainTokenPrice=0, uniContract=True):
+def lp_price(LP_address, base_token_address, baseTokenPrice, mainTokenPrice=0, uniContract=False):
     try:
         if uniContract == True:
             LP_address = Web3.toChecksumAddress(LP_address)
@@ -112,14 +112,14 @@ def get_prices():
     global bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address
 
     #retrieve prices from CoinGecko
-    baseTokenPrice = cg.get_price(ids='governance-ohm', vs_currencies='usd')['governance-ohm']['usd']
-    payoutTokenPrice = cg.get_price(ids='fiat-dao-token', vs_currencies='usd')['fiat-dao-token']['usd']
+    baseTokenPrice = cg.get_price(ids='ethereum', vs_currencies='usd')['ethereum']['usd']
+    payoutTokenPrice = cg.get_price(ids='premia', vs_currencies='usd')['premia']['usd']
 
-    bondClosed = maxDebtReached(bond_address='0x8b17163FB08637d736A63d016123453c306aCa7C')
-    bondEmpty, rewardsLeft, rewardsUSDLeft, treasury_address = emptyTreasaury(treasury_address='0xc9dfd9a53100d11d422e7056d4b7c1a436447788', payout_token_address='0xEd1480d12bE41d92F36f5f7bDd88212E381A3677', payout_token_price=payoutTokenPrice)
-    
-    LPPrice = lp_price(LP_address='0x75b02b9889536B617d57D08c1Ccb929c523945C1', base_token_address='0x0ab87046fBb341D058F17CBC4c1133F25a20a52f', baseTokenPrice=baseTokenPrice, mainTokenPrice=payoutTokenPrice, uniContract=False)
-    bondDisc = bond_discount(bond_address='0x8b17163FB08637d736A63d016123453c306aCa7C', bondPrice=LPPrice, payoutTokenPrice=payoutTokenPrice, maxReached=bondClosed, noFunds=bondEmpty)
+    bondClosed = maxDebtReached(bond_address='0x100d4127E19396b117Ff6ad47D2186F76f7FA50A')
+    bondEmpty, rewardsLeft, rewardsUSDLeft, treasury_address = emptyTreasaury(treasury_address='0xC26eD42E03b32e7B3e0BC3A5b5066f058ea94529', payout_token_address='0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70', payout_token_price=payoutTokenPrice)
+
+    LPPrice = lp_price(LP_address='0x93E2F3a8277E0360081547D711446e4a1F83546D', base_token_address='0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', baseTokenPrice=baseTokenPrice, mainTokenPrice=payoutTokenPrice, uniContract=False)
+    bondDisc = bond_discount(bond_address='0x100d4127E19396b117Ff6ad47D2186F76f7FA50A', bondPrice=LPPrice, payoutTokenPrice=payoutTokenPrice, maxReached=bondClosed, noFunds=bondEmpty)
     return(bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address)
 
 
@@ -130,7 +130,7 @@ async def on_ready():
         check_discounts.start()
 
 
-@tasks.loop(seconds = 60)
+@tasks.loop(seconds = 90)
 async def check_discounts():
     global channel_id, alert_1, alert_2
     bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address = get_prices()
@@ -140,13 +140,13 @@ async def check_discounts():
         try:
             if bondDisc == -999:
                 await guser.edit(nick=f'Sold Out!')
-                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'⛔ FDT-gOHM Bonds'))
+                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'⛔ PREMIA-ETH Bonds'))
             elif bondDisc < 0:
                 await guser.edit(nick=f'{-100*bondDisc:,.2f}% Premium')
-                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'FDT-gOHM Bonds'))
+                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'PREMIA-ETH Bonds'))
             else:
                 await guser.edit(nick=f'{100*bondDisc:,.2f}% Discount')
-                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'FDT-gOHM Bonds'))
+                await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=f'PREMIA-ETH Bonds'))
 
         except Exception as e:
             print("check_discounts error")
@@ -154,10 +154,9 @@ async def check_discounts():
 
     if rewardsUSDLeft <= 10000 and alert_1 is False:
         alert_1, alert_2 = True, True
-        embed = discord.Embed(title='⛔ Treasury Empty!', description=f'No rewards left in the treasury! Refill it before bond discounts grow too much. \n \n [Check the treasury balances here.](https://zapper.fi/account/{treasury_address}) \n ', colour=0xff5252)  # noqa: E501
+        embed = discord.Embed(title='⛔ Treasury Empty!', description=f'No rewards left in the treasury! Refill it before bond discounts grow too much. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xff5252)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} PREMIA', inline=True)
         #send alert: OlympusPro channel
         try:
             OP_channel = await client.fetch_channel('923302824220164186')
@@ -175,8 +174,7 @@ async def check_discounts():
         alert_1, alert_2 = False, True
         embed = discord.Embed(title='Treasury Alert!', description=f'The treasury is running out of rewards. \n Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffbe4d)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} PREMIA', inline=True)
         #send alert: OlympusPro channel
         try:
             OP_channel = await client.fetch_channel('923302824220164186')
@@ -201,8 +199,7 @@ async def treasury_balance(ctx):
     try:
         embed = discord.Embed(title='Current Treasury Status', description=f'Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffffff)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} PREMIA', inline=True)
         await ctx.respond(embed=embed)
 
     except Exception as e:
