@@ -157,7 +157,7 @@ async def check_discounts():
             print(e)
 
     if rewardsUSDLeft <= 10000 and alert_1 is False:
-        alert_1 = True
+        alert_1, alert_2 = True, True
         embed = discord.Embed(title='⛔ Treasury Empty!', description=f'No rewards left in the treasury! Refill it before bond discounts grow too much. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xff5252)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
         embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} PENDLE', inline=True)
@@ -175,7 +175,6 @@ async def check_discounts():
             print(e)
 
     elif rewardsUSDLeft <= 50000 and alert_2 is False:
-        print(alert_2)
         alert_1, alert_2 = False, True
         embed = discord.Embed(title='Treasury Alert!', description=f'The treasury is running out of rewards. \n Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffbe4d)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
@@ -194,7 +193,7 @@ async def check_discounts():
             print(e)
     
     elif rewardsUSDLeft > 10000000 and alert_2 is True:
-        alert_2 = False
+        alert_1, alert_2 = False, False
 
 
 @client.slash_command(description="Check the current balances of the Olympus Pro custom Treasury.")
