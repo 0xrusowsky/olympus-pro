@@ -24,7 +24,7 @@ cg = CoinGeckoAPI()
 
 # Global Variables
 channel_id = 928316893796892734
-alert_1, alert_2 = False, False
+alert_1, alert_2 = True, True
 bondDisc, rewardsLeft, rewardsUSDLeft, treasury_address = 0, 0, 0, 0
 
 
@@ -44,7 +44,7 @@ def lp_price(LP_address, base_token_address, baseTokenPrice, mainTokenPrice=0, u
         print(f'supply: {Supply}')
         tokenZero = LP.functions.token0().call()
         if tokenZero == base_token_address:
-            LPPrice = decimal.Decimal((Reserves[0]*baseTokenPrice + Reserves[1]*mainTokenPrice)/Supply)
+            LPPrice = decimal.Decimal((Reserves[0]*baseTokenPrice + Reserves[1]*mainTokenPrice)/Supply) #gohm18
         else:
             LPPrice = decimal.Decimal((Reserves[0]*mainTokenPrice + Reserves[1]*baseTokenPrice)/Supply)
         print(f'baseToken Price: {baseTokenPrice}')
