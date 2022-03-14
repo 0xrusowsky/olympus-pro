@@ -151,13 +151,28 @@ async def check_discounts():
         except Exception as e:
             print("check_discounts error")
             print(e)
+ 
+        #olympusDAO community server
+        if guild.id == 798328113087119371:
+            try:
+                role = guild.get_role(931124503596105728)
+                if guser.name[0:] != '-' and (int(guser.name[0]) >= 5 or guser.name[2] == '.'):
+                    if role not in guser.roles:
+                        await guser.add_roles(role)
+                else:
+                    if role in guser.roles:
+                        await guser.remove_roles(role)
+
+            except Exception as e:
+                print("5% role error")
+                print(e)
+
 
     if rewardsUSDLeft <= 10000 and alert_1 is False:
         alert_1, alert_2 = True, True
         embed = discord.Embed(title='⛔ Treasury Empty!', description=f'No rewards left in the treasury! Refill it before bond discounts grow too much. \n \n [Check the treasury balances here.](https://zapper.fi/account/{treasury_address}) \n ', colour=0xff5252)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT', inline=True)
         #send alert: OlympusPro channel
         try:
             OP_channel = await client.fetch_channel('923302824220164186')
@@ -175,8 +190,7 @@ async def check_discounts():
         alert_1, alert_2 = False, True
         embed = discord.Embed(title='Treasury Alert!', description=f'The treasury is running out of rewards. \n Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffbe4d)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT', inline=True)
         #send alert: OlympusPro channel
         try:
             OP_channel = await client.fetch_channel('923302824220164186')
@@ -201,8 +215,7 @@ async def treasury_balance(ctx):
     try:
         embed = discord.Embed(title='Current Treasury Status', description=f'Remember that if treasury rewards sold out bonds will stop. Note that this can be a problem if you delay the refill, since bond discounts will keep growing. \n \n [Check the treasury balances here.](https://debank.com/profile/{treasury_address}) \n ', colour=0xffffff)  # noqa: E501
         embed.add_field(name='Rewards left in USD', value=f'{rewardsUSDLeft:,.2f}$', inline=True)
-        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT'
-, inline=True)
+        embed.add_field(name='Rewards left in Payout Token', value=f'{rewardsLeft:,.2f} FDT', inline=True)
         await ctx.respond(embed=embed)
 
     except Exception as e:
